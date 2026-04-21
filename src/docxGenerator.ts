@@ -15,6 +15,7 @@ export interface DocxConfig {
   nipGuru: string;
   namaKepala: string;
   nipKepala: string;
+  alokasiWaktuPerPekan?: string;
 }
 
 const tableBorders = {

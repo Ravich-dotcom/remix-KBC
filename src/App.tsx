@@ -90,6 +90,7 @@ const INITIAL_FORM_DATA: DocxConfig = {
   nipGuru: '',
   namaKepala: '',
   nipKepala: '',
+  alokasiWaktuPerPekan: '2',
 };
 
 export default function App() {
@@ -171,6 +172,7 @@ Tugas Anda adalah membuat data perangkat pembelajaran untuk:
 - Mata Pelajaran: ${formData.mapel}
 - Semester: ${formData.semester}
 - Dokumen yang diminta: ${formData.dokumen.join(', ')}
+- Alokasi Waktu per Pekan: ${formData.alokasiWaktuPerPekan} JP
 
 Prinsip Kerja:
 1. Kepatuhan Regulasi: Selaras dengan CP 046/H/KR/2025 dan KMA 1503 Tahun 2025 (6 hari kerja).
@@ -188,7 +190,7 @@ Struktur Wajib:
   "prosem": [{"no": "String", "noAtp": "String", "atp": "String", "alokasiWaktu": "String", "bulan1": [true,false,false,false,false], "bulan2": [false,false,false,false,false], "bulan3": [false,false,false,false,false], "bulan4": [false,false,false,false,false], "bulan5": [false,false,false,false,false], "bulan6": [false,false,false,false,false]}],
   "kktp": [{"tp": "String Tujuan Pembelajaran", "kriteria": "String Kriteria", "baruBerkembang": false, "layak": true, "cakap": false, "mahir": false}]
 }
-Catatan prosem: Berikan array 5 boolean yang merepresentasikan 5 minggu untuk masing-masing 6 bulan (bulan1 sampai bulan6). Nilai \`true\` menandakan diajarkan di minggu tersebut. Pastikan total true = Alokasi Waktu (asumsikan 1 minggu = x JP).
+Catatan prosem: Berikan array 5 boolean yang merepresentasikan 5 minggu untuk masing-masing 6 bulan (bulan1 sampai bulan6). Nilai \`true\` menandakan diajarkan di minggu tersebut. Pastikan total true (jumlah minggu mengajar) dikalikan dengan alokasi waktu per pekan (${formData.alokasiWaktuPerPekan} JP) sesuai dengan total JP semester tersebut.
 HANYA kembalikan JSON.
 `;
 
@@ -372,6 +374,25 @@ HANYA kembalikan JSON.
                     <option value="Ganjil">Ganjil</option>
                     <option value="Genap">Genap</option>
                   </select>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1.5 mb-1.5">
+                <label className="text-[11px] font-semibold uppercase text-gray-600 tracking-[0.05em]">Alokasi Waktu (JP per Pekan)</label>
+                <div className="flex items-center gap-3">
+                  <input 
+                    type="range" 
+                    name="alokasiWaktuPerPekan" 
+                    min="1" 
+                    max="10" 
+                    step="1" 
+                    value={formData.alokasiWaktuPerPekan} 
+                    onChange={handleInputChange} 
+                    className="flex-1 accent-[#0EA5E9]" 
+                  />
+                  <span className="bg-sky-100 text-[#0369A1] px-3 py-1 rounded-md font-bold text-[13px] min-w-[50px] text-center">
+                    {formData.alokasiWaktuPerPekan} JP
+                  </span>
                 </div>
               </div>
            </div>

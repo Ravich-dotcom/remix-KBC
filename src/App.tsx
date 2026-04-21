@@ -1,10 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { Bot, Settings2, FileText, FileSearch, Sparkles, AlertCircle, Download, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Bot, Settings2, FileText, FileSearch, Sparkles, AlertCircle, Download, CheckCircle2, X } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { generateDoc, DocxConfig } from './docxGenerator';
+import { motion, AnimatePresence } from 'motion/react';
 
-// Initialize Gemini Client
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Help functions for API Key Management
+const STORAGE_KEY = 'gemini_api_key_override';
+const getStoredApiKey = () => {
+  if (typeof window === 'undefined') return '';
+  return localStorage.getItem(STORAGE_KEY) || '';
+};
+
+const saveApiKey = (key: string) => {
+  localStorage.setItem(STORAGE_KEY, key);
+};
+
+// Available Models from Gemini skill
+const DEFAULT_MODEL = 'gemini-3-flash-preview';
 
 const MADRASAH_SUBJECTS_GROUPED = {
   "Mata Pelajaran Umum Dasar": [
@@ -86,6 +98,11 @@ export default function App() {
   const [errorTimer, setErrorTimer] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [aiResult, setAiResult] = useState<any>(null);
+  
+  // Settings State
+  const [showSettings, setShowSettings] = useState(false);
+  const [userApiKey, setUserApiKey] = useState(getStoredApiKey());
+  const [tempApiKey, setTempApiKey] = useState(getStoredApiKey());
 
   // Timer Logic for Error Handling
   useEffect(() => {
@@ -119,6 +136,12 @@ export default function App() {
     }
   };
 
+  const handleSaveSettings = () => {
+    saveApiKey(tempApiKey);
+    setUserApiKey(tempApiKey);
+    setShowSettings(false);
+  };
+
   const generateAIRequest = async () => {
     if (formData.dokumen.length === 0) {
       alert("Pilih minimal 1 jenis dokumen!");
@@ -129,9 +152,19 @@ export default function App() {
       return;
     }
 
+    const apiKeyToUse = userApiKey || process.env.GEMINI_API_KEY;
+    if (!apiKeyToUse) {
+      setShowSettings(true);
+      alert("Silakan masukkan Gemini API Key di menu Settings terlebih dahulu.");
+      return;
+    }
+
     setLoading(true);
     setShowResult(false);
     
+    // Initialize AI within the request to use the latest key
+    const ai = new GoogleGenAI({ apiKey: apiKeyToUse });
+
     const prompt = `Anda adalah seorang ahli pembuat perangkat ajar (Kurikulum) tingkat sekolah dan madrasah (KMA 1503 Tahun 2025 & CP 046 Tahun 2025).
 Tugas Anda adalah membuat data perangkat pembelajaran untuk:
 - Tingkatan: ${formData.tingkatan} Kelas ${formData.kelas}
@@ -161,7 +194,7 @@ HANYA kembalikan JSON.
 
     try {
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
+        model: DEFAULT_MODEL,
         contents: prompt,
         config: {
             responseMimeType: "application/json",
@@ -176,7 +209,12 @@ HANYA kembalikan JSON.
       setShowResult(true);
     } catch (err: any) {
       console.error(err);
-      setErrorTimer(60);
+      if (err.message?.includes('401') || err.message?.includes('API_KEY_INVALID')) {
+        alert("API Key tidak valid atau telah kadaluarsa. Periksa kembali di menu Settings.");
+        setShowSettings(true);
+      } else {
+        setErrorTimer(60);
+      }
     } finally {
       setLoading(false);
     }
@@ -204,10 +242,92 @@ HANYA kembalikan JSON.
             <p className="text-[12px] text-gray-600">Sistem Administrasi Kurikulum Madrasah & Sekolah</p>
           </div>
         </div>
-        <div className="bg-[#E0F2FE] text-[#0369A1] px-2 py-0.5 rounded text-[10px] font-bold hidden sm:block">
-          KMA 1503/2025 & CP 046/2025 COMPLIANT
+        <div className="flex items-center gap-3">
+          <div className="bg-[#E0F2FE] text-[#0369A1] px-2 py-0.5 rounded text-[10px] font-bold hidden sm:block uppercase tracking-wider">
+            KMA 1503/2025 & CP 046/2025 COMPLIANT
+          </div>
+          <button 
+            onClick={() => setShowSettings(true)}
+            className="p-2 text-gray-400 hover:text-gray-600 transition-colors bg-gray-50 rounded-full border border-gray-100 hover:border-gray-200"
+            title="Pengaturan API Key"
+          >
+            <Settings2 size={20} />
+          </button>
         </div>
       </header>
+
+      {/* Settings Modal */}
+      <AnimatePresence>
+        {showSettings && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowSettings(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden"
+            >
+              <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 className="font-bold text-gray-900 flex items-center gap-2 text-lg">
+                  <Settings2 size={20} className="text-[#0EA5E9]" />
+                  Pengaturan
+                </h3>
+                <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-6">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Gemini API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={tempApiKey}
+                    onChange={(e) => setTempApiKey(e.target.value)}
+                    placeholder="Masukkan API Key Anda..."
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#0EA5E9] focus:outline-none transition-all font-mono text-sm"
+                  />
+                  <p className="mt-3 text-xs text-gray-500 leading-relaxed">
+                    Kunci API ini digunakan untuk memproses permintaan AI. Data disimpan aman di browser Anda (localStorage) dan tidak akan dikirim ke server kami.
+                  </p>
+                  <div className="flex flex-col gap-2 mt-4">
+                    <a 
+                      href="https://aistudio.google.com/app/apikey" 
+                      target="_blank" 
+                      rel="noreferrer"
+                      className="text-xs text-[#0EA5E9] hover:underline inline-flex items-center gap-1 font-medium"
+                    >
+                      Dapatkan API Key Gratis di Google AI Studio <Sparkles size={12} />
+                    </a>
+                  </div>
+                </div>
+                
+                <div className="flex gap-3 mt-8">
+                  <button
+                    onClick={() => setShowSettings(false)}
+                    className="flex-1 px-4 py-3 text-sm font-semibold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-all"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={handleSaveSettings}
+                    className="flex-[2] px-4 py-3 text-sm font-semibold text-white bg-[#0EA5E9] rounded-xl hover:bg-[#0284C7] shadow-lg shadow-sky-100 transition-all"
+                  >
+                    Simpan Perubahan
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <main className="flex-1 grid grid-cols-1 md:grid-cols-[380px_1fr] overflow-hidden">
         {/* Step 1: Input Panel */}

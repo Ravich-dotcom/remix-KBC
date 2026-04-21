@@ -1,6 +1,6 @@
 {
   "name": "Remix: admin1742026",
-  "description": "Smart Administration for Madrasah Excellence - Generates Curriculum AI Docs",
+  "description": "Smart Administration for Madrasah Excellence - Generates Curriculum AI Docs with User API Key Support & Vercel Ready Configuration",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }
